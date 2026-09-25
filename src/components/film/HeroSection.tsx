@@ -41,6 +41,13 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
       poster: '/video/poster_video3.jpg',
       headline: 'REDEFINING LUXURY INTERIORS GLOBALLY.',
       durationSeconds: 15
+    },
+    {
+      id: 'seq-4',
+      video: '/video/video4.mp4',
+      poster: '/video/poster_video4.jpg',
+      headline: 'MONUMENTAL RESIDENCES. UNRIVALED SCALE.',
+      durationSeconds: 10
     }
   ];
 
