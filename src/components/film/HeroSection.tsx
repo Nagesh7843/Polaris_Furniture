@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Volume2, VolumeX } from 'lucide-react';
 
 interface HeroSectionProps {
   onOpenConsultation?: () => void;
@@ -12,53 +12,73 @@ interface HeroSequence {
   video: string;
   poster: string;
   headline: string;
-  subtitle: string;
-  specs: string;
   durationSeconds: number;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, onNavigatePage }) => {
   const [activePhase, setActivePhase] = useState(0);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([]);
 
   const SEQUENCES: HeroSequence[] = [
     {
       id: 'seq-1',
       video: '/video/video1.mp4',
-      poster: '/assets/hero_timber_grain_1790274744364.jpg',
-      headline: 'WE CRAFT LIVING TIMBER.',
-      subtitle: 'Master woodworking and bespoke furniture design, engineered from sustainably harvested European Oak and American Walnut flitches.',
-      specs: 'QUARTER-SAWN GRAIN · KILN EQUILIBRIUM 8–10% · STRUCTURAL HARDWOOD',
+      poster: '/video/poster_video1.jpg',
+      headline: 'ARCHITECTURAL PRECISION. BESPOKE CRAFT.',
       durationSeconds: 10
     },
     {
       id: 'seq-2',
       video: '/video/video2.mp4',
-      poster: '/assets/hero_joinery_craft_1790274773951.jpg',
-      headline: 'SHAPED BY MASTER HANDS.',
-      subtitle: 'Interlocking mitered dovetails, blind mortise-and-tenon cabinetry, and hairline brushed bronze reveals crafted in Dubai.',
-      specs: 'MITERED DOVETAILS · PVD BRASS SHADOW GAPS · ±0.2MM TOLERANCE',
+      poster: '/video/poster_video2.jpg',
+      headline: 'TIMELESS SPACES CRAFTED FOR LIVING.',
       durationSeconds: 10
     },
     {
       id: 'seq-3',
       video: '/video/video3.mp4',
-      poster: '/assets/furniture_table_minimal_1790272332231.jpg',
-      headline: 'FURNITURE AS ARCHITECTURE.',
-      subtitle: 'Solid timber credenzas, bespoke dining centerpieces, and contract hospitality casework crafted in our 45,000+ sq. ft. campus.',
-      specs: 'HONED CARRARA MARBLE · TAMBOUR SLATS · SOLID WALNUT CARCASS',
-      durationSeconds: 14
+      poster: '/video/poster_video3.jpg',
+      headline: 'REDEFINING LUXURY INTERIORS GLOBALLY.',
+      durationSeconds: 15
     }
   ];
 
   const current = SEQUENCES[activePhase];
 
-  // Advance to next video sequence
+  // Control video playback upon active phase change
+  useEffect(() => {
+    videoRefs.current.forEach((vid, idx) => {
+      if (!vid) return;
+      if (idx === activePhase) {
+        vid.play().catch(() => {});
+      } else {
+        // Soft pause inactive video after crossfade completes
+        const t = setTimeout(() => {
+          if (idx !== activePhase) {
+            vid.pause();
+          }
+        }, 1500);
+        return () => clearTimeout(t);
+      }
+    });
+  }, [activePhase]);
+
+  // Synchronize audio mute state
+  useEffect(() => {
+    videoRefs.current.forEach((vid) => {
+      if (vid) {
+        vid.muted = isMuted;
+      }
+    });
+  }, [isMuted]);
+
+  // Advance to next sequence
   const advanceSequence = () => {
     setActivePhase((prev) => (prev + 1) % SEQUENCES.length);
   };
 
-  // Fallback timer if video onEnded doesn't fire or stalls
+  // Automatic sequence progression timer
   useEffect(() => {
     const timer = setTimeout(() => {
       advanceSequence();
@@ -67,74 +87,71 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
     return () => clearTimeout(timer);
   }, [activePhase, current.durationSeconds]);
 
-  // Ensure newly mounted video begins playing immediately
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.play().catch(() => {});
-    }
-  }, [activePhase]);
-
   return (
     <section
       id="hero"
       style={{
         position: 'relative',
         width: '100%',
-        minHeight: 'clamp(560px, 92svh, 860px)',
+        minHeight: 'clamp(620px, 94svh, 920px)',
         overflow: 'hidden',
         backgroundColor: 'var(--color-pitch)',
         color: 'var(--color-ivory)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingTop: '5rem',
-        paddingBottom: '3rem'
+        paddingTop: '6rem',
+        paddingBottom: '5rem'
       }}
     >
-      {/* Background Video Crossfade Transition */}
-      <AnimatePresence mode="sync">
-        <motion.div
-          key={current.id + '-video-wrap'}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            overflow: 'hidden'
-          }}
-        >
-          <video
-            ref={videoRef}
-            src={current.video}
-            poster={current.poster}
-            autoPlay
-            muted
-            playsInline
-            loop={false}
-            onEnded={advanceSequence}
-            onLoadedData={(e) => {
-              e.currentTarget.play().catch(() => {});
-            }}
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              objectPosition: 'center',
-              filter: 'brightness(0.58) contrast(1.1)'
-            }}
-          />
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Atmospheric Vignette Overlays */}
+      {/* Background Video Stage: Permanent Multi-Track Elements for Zero-Stutter Crossfades */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'radial-gradient(circle at center, transparent 25%, rgba(6, 6, 6, 0.82) 100%)',
+          overflow: 'hidden',
+          zIndex: 1
+        }}
+      >
+        {SEQUENCES.map((seq, idx) => {
+          const isActive = activePhase === idx;
+          return (
+            <video
+              key={seq.id}
+              ref={(el) => {
+                videoRefs.current[idx] = el;
+              }}
+              src={seq.video}
+              poster={seq.poster}
+              autoPlay={idx === 0}
+              muted={isMuted}
+              playsInline
+              loop
+              preload="auto"
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center',
+                opacity: isActive ? 1 : 0,
+                transform: isActive ? 'scale(1.0)' : 'scale(1.04)',
+                transition: 'opacity 1.4s cubic-bezier(0.16, 1, 0.3, 1), transform 1.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                pointerEvents: 'none',
+                filter: 'brightness(0.88) contrast(1.05)'
+              }}
+            />
+          );
+        })}
+      </div>
+
+      {/* Cinematic Ambient Scrim: Balances Rich Video Visibility with Sharp Headline Readability */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'radial-gradient(circle at center, rgba(6, 6, 6, 0.15) 0%, rgba(6, 6, 6, 0.48) 100%)',
           pointerEvents: 'none',
           zIndex: 3
         }}
@@ -143,7 +160,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(180deg, rgba(6, 6, 6, 0.55) 0%, transparent 40%, rgba(6, 6, 6, 0.92) 100%)',
+          background: 'linear-gradient(180deg, rgba(6, 6, 6, 0.42) 0%, rgba(6, 6, 6, 0.1) 40%, rgba(6, 6, 6, 0.62) 100%)',
           pointerEvents: 'none',
           zIndex: 3
         }}
@@ -155,7 +172,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
           position: 'relative',
           zIndex: 10,
           textAlign: 'center',
-          maxWidth: '1020px',
+          maxWidth: '1080px',
           width: '100%',
           padding: '0 1.25rem',
           display: 'flex',
@@ -163,7 +180,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
           alignItems: 'center'
         }}
       >
-        {/* CSS Grid Overlay Container: Guarantees zero layout shift during crossfade */}
+        {/* CSS Grid Overlay Container: Zero-Layout-Shift Cinematic Text Crossfade */}
         <div
           style={{
             display: 'grid',
@@ -176,10 +193,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
           <AnimatePresence mode="sync">
             <motion.div
               key={current.id + '-content'}
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+              exit={{ opacity: 0, y: -18 }}
+              transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
               style={{
                 gridArea: '1 / 1',
                 width: '100%',
@@ -188,60 +205,28 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
                 alignItems: 'center'
               }}
             >
-              {/* Monumental Headline */}
+              {/* Monumental Cinematic Headline */}
               <h1
                 style={{
                   fontFamily: 'var(--font-serif-display)',
-                  fontSize: 'clamp(2.1rem, 6.5vw, 6.2rem)',
-                  lineHeight: 1.04,
+                  fontSize: 'clamp(2.3rem, 6.4vw, 5.8rem)',
+                  lineHeight: 1.05,
                   fontWeight: 500,
                   letterSpacing: '0.04em',
                   textTransform: 'uppercase',
                   color: 'var(--color-ivory-light)',
                   margin: 0,
-                  textShadow: '0 4px 30px rgba(0, 0, 0, 0.95)'
+                  maxWidth: '1020px',
+                  textShadow: '0 4px 30px rgba(0, 0, 0, 0.95), 0 2px 8px rgba(0, 0, 0, 0.8)'
                 }}
               >
                 {current.headline}
               </h1>
-
-              {/* Refined Craft Prose */}
-              <p
-                style={{
-                  marginTop: '1.25rem',
-                  fontFamily: 'var(--font-sans)',
-                  fontSize: 'clamp(0.9rem, 1.3vw, 1.18rem)',
-                  fontWeight: 300,
-                  lineHeight: 1.65,
-                  letterSpacing: '0.03em',
-                  color: 'var(--color-ivory-muted)',
-                  maxWidth: '740px',
-                  margin: '1.25rem auto 0 auto',
-                  textShadow: '0 2px 12px rgba(0, 0, 0, 0.95)'
-                }}
-              >
-                {current.subtitle}
-              </p>
-
-              {/* Architectural Spec Line */}
-              <div
-                style={{
-                  marginTop: '1.25rem',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 'clamp(0.56rem, 1.1vw, 0.66rem)',
-                  letterSpacing: '0.14em',
-                  color: 'var(--color-bronze-light)',
-                  textTransform: 'uppercase',
-                  lineHeight: 1.5
-                }}
-              >
-                {current.specs}
-              </div>
             </motion.div>
           </AnimatePresence>
         </div>
 
-        {/* Website Action Buttons — Stationary & Permanent */}
+        {/* Website Action Buttons — Stationary & Stable */}
         <div
           style={{
             marginTop: '2.5rem',
@@ -258,12 +243,12 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
             className="btn-bronze hero-action-btn"
             style={{ padding: '0.9rem 2.2rem', fontSize: '0.72rem', letterSpacing: '0.14em' }}
           >
-            <span>START A COMMISSION</span>
+            <span>COMMISSION BESPOKE WORK</span>
             <ArrowUpRight size={15} />
           </button>
 
           <button
-            onClick={() => onNavigatePage && onNavigatePage('joinery')}
+            onClick={() => onNavigatePage && onNavigatePage('facility')}
             className="hero-action-btn"
             style={{
               background: 'rgba(25, 22, 19, 0.72)',
@@ -288,10 +273,70 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
               e.currentTarget.style.color = 'var(--color-ivory)';
             }}
           >
-            <span>EXPLORE MASTER JOINERY →</span>
+            <span>EXPLORE PRODUCTION CAMPUS →</span>
           </button>
         </div>
+
+        {/* Sleek Minimalist Sequence Indicators */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '8px',
+            marginTop: '2.5rem'
+          }}
+        >
+          {SEQUENCES.map((seq, idx) => {
+            const isCurrent = activePhase === idx;
+            return (
+              <button
+                key={seq.id}
+                onClick={() => setActivePhase(idx)}
+                aria-label={`Sequence ${idx + 1}`}
+                style={{
+                  width: isCurrent ? '34px' : '14px',
+                  height: '3px',
+                  borderRadius: '2px',
+                  backgroundColor: isCurrent ? 'var(--color-bronze)' : 'rgba(216, 209, 196, 0.28)',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}
+              />
+            );
+          })}
+        </div>
       </div>
+
+      {/* Floating Audio Ambient Toggle Control */}
+      <button
+        onClick={() => setIsMuted(!isMuted)}
+        style={{
+          position: 'absolute',
+          bottom: '1.5rem',
+          right: '1.5rem',
+          zIndex: 20,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '8px 12px',
+          backgroundColor: 'rgba(10, 9, 8, 0.75)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid var(--color-bronze-border-subtle)',
+          fontFamily: 'var(--font-mono)',
+          fontSize: '0.62rem',
+          letterSpacing: '0.12em',
+          color: isMuted ? 'var(--color-stone)' : 'var(--color-bronze-light)',
+          cursor: 'pointer',
+          transition: 'all 0.25s ease'
+        }}
+        title={isMuted ? 'Unmute video audio' : 'Mute video audio'}
+      >
+        {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} color="var(--color-bronze)" />}
+        <span>{isMuted ? 'AUDIO: MUTED' : 'AUDIO: LIVE'}</span>
+      </button>
 
       <style>{`
         @media (max-width: 520px) {
