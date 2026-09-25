@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowUpRight } from 'lucide-react';
 
@@ -7,74 +7,73 @@ interface HeroSectionProps {
   onNavigatePage?: (pageId: string) => void;
 }
 
+interface HeroSequence {
+  id: string;
+  video: string;
+  poster: string;
+  headline: string;
+  subtitle: string;
+  specs: string;
+  durationSeconds: number;
+}
+
 export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, onNavigatePage }) => {
   const [activePhase, setActivePhase] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
-  const PHASES = [
+  const SEQUENCES: HeroSequence[] = [
     {
-      id: 'grain',
-      image: '/assets/hero_timber_grain_1790274744364.jpg',
-      code: 'CODE: OAK-WLN-01',
-      textureTag: 'CUSTOM FURNITURE TEXTURE // QUARTER-SAWN EUROPEAN OAK & AMERICAN WALNUT',
-      materialCode: 'MAT-CODE: FSC-100 // KILN EQUILIBRIUM 8–10%',
-      tag: '01 // RAW HARDWOOD INTEGRITY',
+      id: 'seq-1',
+      video: '/video/video1.mp4',
+      poster: '/assets/hero_timber_grain_1790274744364.jpg',
       headline: 'WE CRAFT LIVING TIMBER.',
       subtitle: 'Master woodworking and bespoke furniture design, engineered from sustainably harvested European Oak and American Walnut flitches.',
-      specs: 'QUARTER-SAWN GRAIN · KILN EQUILIBRIUM 8–10% · STRUCTURAL HARDWOOD'
+      specs: 'QUARTER-SAWN GRAIN · KILN EQUILIBRIUM 8–10% · STRUCTURAL HARDWOOD',
+      durationSeconds: 10
     },
     {
-      id: 'joinery',
-      image: '/assets/hero_joinery_craft_1790274773951.jpg',
-      code: 'CODE: JNR-CNC-02',
-      textureTag: 'CUSTOM FURNITURE TEXTURE // INTERLOCKING MITERED DOVETAILS & PVD BRASS',
-      materialCode: 'MAT-CODE: BRZ-316L // TOLERANCE ±0.2MM',
-      tag: '02 // ARTISANAL JOINERY ARCHITECTURE',
+      id: 'seq-2',
+      video: '/video/video2.mp4',
+      poster: '/assets/hero_joinery_craft_1790274773951.jpg',
       headline: 'SHAPED BY MASTER HANDS.',
       subtitle: 'Interlocking mitered dovetails, blind mortise-and-tenon cabinetry, and hairline brushed bronze reveals crafted in Dubai.',
-      specs: 'MITERED DOVETAILS · PVD BRASS SHADOW GAPS · ±0.2MM TOLERANCE'
+      specs: 'MITERED DOVETAILS · PVD BRASS SHADOW GAPS · ±0.2MM TOLERANCE',
+      durationSeconds: 10
     },
     {
-      id: 'furniture',
-      image: '/assets/furniture_table_minimal_1790272332231.jpg',
-      code: 'CODE: FNT-CRD-03',
-      textureTag: 'CUSTOM FURNITURE TEXTURE // HONED BIANCO CARRARA & TAMBOUR SLATS',
-      materialCode: 'MAT-CODE: MAR-IT20 // TAMBOUR WALNUT CARCASS',
-      tag: '03 // BESPOKE FURNITURE FABRICATION',
+      id: 'seq-3',
+      video: '/video/video3.mp4',
+      poster: '/assets/furniture_table_minimal_1790272332231.jpg',
       headline: 'FURNITURE AS ARCHITECTURE.',
       subtitle: 'Solid timber credenzas, bespoke dining centerpieces, and contract hospitality casework crafted in our 45,000+ sq. ft. campus.',
-      specs: 'HONED CARRARA MARBLE · TAMBOUR SLATS · SOLID WALNUT CARCASS'
-    },
-    {
-      id: 'space',
-      image: '/assets/furniture_closing_sanctuary_1790272406073.jpg',
-      code: 'CODE: SPC-FIT-04',
-      textureTag: 'CUSTOM FURNITURE TEXTURE // CONTRACT BOUCLÉ & BOOKMATCHED ELEVATIONS',
-      materialCode: 'MAT-CODE: TXT-50K // CIVIL DEFENSE FD120',
-      tag: '04 // FINISHED ARCHITECTURAL SANCTUARY',
-      headline: 'CRAFTED FOR THE SPACE.',
-      subtitle: 'From standalone heirloom furniture pieces to turnkey presidential hotel suites and palatial private residences across the GCC.',
-      specs: 'TURNKEY JOINERY EXECUTION · SOLID TIMBER ARCHITECTURE · GLOBAL DELIVERY'
+      specs: 'HONED CARRARA MARBLE · TAMBOUR SLATS · SOLID WALNUT CARCASS',
+      durationSeconds: 14
     }
   ];
 
-  const CYCLE_TIME = 6000; // 6 seconds per phase
+  const current = SEQUENCES[activePhase];
 
-  // Preload all hero images so transitions never stall or flicker
+  // Advance to next video sequence
+  const advanceSequence = () => {
+    setActivePhase((prev) => (prev + 1) % SEQUENCES.length);
+  };
+
+  // Fallback timer if video onEnded doesn't fire or stalls
   useEffect(() => {
-    PHASES.forEach((phase) => {
-      const img = new Image();
-      img.src = phase.image;
-    });
-  }, []);
+    const timer = setTimeout(() => {
+      advanceSequence();
+    }, current.durationSeconds * 1000);
 
+    return () => clearTimeout(timer);
+  }, [activePhase, current.durationSeconds]);
+
+  // Ensure newly mounted video begins playing immediately
   useEffect(() => {
-    const timer = setInterval(() => {
-      setActivePhase((prev) => (prev + 1) % PHASES.length);
-    }, CYCLE_TIME);
-    return () => clearInterval(timer);
-  }, [PHASES.length]);
-
-  const current = PHASES[activePhase];
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [activePhase]);
 
   return (
     <section
@@ -93,23 +92,41 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
         paddingBottom: '3rem'
       }}
     >
-      {/* Background Visual Crossfade Transition */}
+      {/* Background Video Crossfade Transition */}
       <AnimatePresence mode="sync">
         <motion.div
-          key={current.id + '-bg'}
-          initial={{ opacity: 0, scale: 1.04 }}
-          animate={{ opacity: 1, scale: 1.0 }}
+          key={current.id + '-video-wrap'}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+          transition={{ duration: 1.0, ease: [0.16, 1, 0.3, 1] }}
           style={{
             position: 'absolute',
             inset: 0,
-            backgroundImage: `url(${current.image})`,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            filter: 'brightness(0.58) contrast(1.12)'
+            overflow: 'hidden'
           }}
-        />
+        >
+          <video
+            ref={videoRef}
+            src={current.video}
+            poster={current.poster}
+            autoPlay
+            muted
+            playsInline
+            loop={false}
+            onEnded={advanceSequence}
+            onLoadedData={(e) => {
+              e.currentTarget.play().catch(() => {});
+            }}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              objectPosition: 'center',
+              filter: 'brightness(0.58) contrast(1.1)'
+            }}
+          />
+        </motion.div>
       </AnimatePresence>
 
       {/* Atmospheric Vignette Overlays */}
@@ -117,7 +134,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'radial-gradient(circle at center, transparent 30%, rgba(6, 6, 6, 0.78) 100%)',
+          background: 'radial-gradient(circle at center, transparent 25%, rgba(6, 6, 6, 0.82) 100%)',
           pointerEvents: 'none',
           zIndex: 3
         }}
@@ -126,7 +143,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(180deg, rgba(6, 6, 6, 0.5) 0%, transparent 40%, rgba(6, 6, 6, 0.9) 100%)',
+          background: 'linear-gradient(180deg, rgba(6, 6, 6, 0.55) 0%, transparent 40%, rgba(6, 6, 6, 0.92) 100%)',
           pointerEvents: 'none',
           zIndex: 3
         }}
@@ -224,7 +241,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ onOpenConsultation, on
           </AnimatePresence>
         </div>
 
-        {/* Website Action Buttons — Stationary & Stable (Never shifts or flashes during transitions) */}
+        {/* Website Action Buttons — Stationary & Permanent */}
         <div
           style={{
             marginTop: '2.5rem',
